@@ -20,6 +20,12 @@ error Raffle__UpkeepNotNeeded(
     uint256 raffleState
 );
 
+/** @title Raffle Contract
+ * @author Tony
+ * @notice This contract is for creating untamperable smart contract
+ * @dev Implements chainlink vrf v2 and chainlink keepers
+ */
+
 contract Raffle is VRFConsumerBaseV2, KeeperCompatibleInterface {
     /* Type */
     enum RaffleState {
@@ -49,7 +55,7 @@ contract Raffle is VRFConsumerBaseV2, KeeperCompatibleInterface {
     event RequestedRaffleWinner(uint256 indexed requestId);
     event WinnerPicked(address indexed winner);
 
-    // Constrcutor
+    /* Functions */
     constructor(
         address vrfCoordinatorV2,
         uint256 entraceFee,
@@ -91,8 +97,8 @@ contract Raffle is VRFConsumerBaseV2, KeeperCompatibleInterface {
      * 3. Our subscription is funded with LINK
      * 4. The lottery should in an "open" state
      */
-    function checkUpKeep(
-        bytes calldata /*checkData*/
+    function checkUpkeep(
+        bytes memory /*checkData*/ // OG bytes calldata -> calldata doesnt work with strings, update to memory
     )
         public
         override
@@ -112,13 +118,13 @@ contract Raffle is VRFConsumerBaseV2, KeeperCompatibleInterface {
 
     // external are cheaper then public, since contract cant call this
     //  function requestRandomWinner() external {
-    function performUpKeep(
+    function performUpkeep(
         bytes calldata /* performData */
     ) external override {
         // Request random number
         // do something with it
         // 2 transaction process
-        (bool upKeepNeeded, ) = checkUpKeep("");
+        (bool upKeepNeeded, ) = checkUpkeep("");
         if (!upKeepNeeded) {
             revert Raffle__UpkeepNotNeeded(
                 address(this).balance,
@@ -182,5 +188,26 @@ contract Raffle is VRFConsumerBaseV2, KeeperCompatibleInterface {
 
     function getRecentWinner() public view returns (address) {
         return s_recentWinner;
+    }
+
+    function getRaffleState() public view returns (RaffleState) {
+        return s_raffleState;
+    }
+
+    // Use pure instead of view
+    function getNumWords() public pure returns (uint256) {
+        return NUM_WORDS;
+    }
+
+    function getNumberOfPlayers() public view returns (uint256) {
+        return s_players.length;
+    }
+
+    function getLatestTimeStamp() public view returns (uint256) {
+        return s_lastTimeStamp;
+    }
+
+    function getRequestConfirmations() public pure returns (uint256) {
+        return REQUEST_CONFIRMATION;
     }
 }
