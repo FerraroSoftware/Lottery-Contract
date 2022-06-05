@@ -9,11 +9,19 @@ pragma solidity ^0.8.7;
 
 import "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
+import "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
 
 error Raffle__NotEnoughETHEntered();
 error Raffle__TransferFailed();
+error Raffle__NotOpen();
 
-contract Raffle is VRFConsumerBaseV2 {
+contract Raffle is VRFConsumerBaseV2, KeeperCompatibleInterface {
+    /* Type */
+    enum RaffleState {
+        OPEN,
+        CALCULATING
+    }
+
     /* State variables */
     uint256 private immutable i_entraceFee;
     address payable[] private s_players; // someone from this list will need to be paid
@@ -27,6 +35,7 @@ contract Raffle is VRFConsumerBaseV2 {
 
     // Loterry Variables
     address private s_recentWinner;
+    RaffleState private s_raffleState;
 
     /* Events */
     event RaffleEnter(address indexed player);
@@ -46,6 +55,7 @@ contract Raffle is VRFConsumerBaseV2 {
         i_gasLane = gasLane;
         i_subscriptionId = subscriptionId;
         i_callbackGasLimit = callbackGasLimit;
+        s_raffleState = RaffleState.OPEN;
     }
 
     function enterRaffle() public payable {
@@ -53,24 +63,35 @@ contract Raffle is VRFConsumerBaseV2 {
         if (msg.value < i_entraceFee) {
             revert Raffle__NotEnoughETHEntered();
         }
+        if (s_raffleState != RaffleState.OPEN) {
+            revert Raffle__NotOpen();
+        }
+
         s_players.push(payable(msg.sender));
         // Events - emit an event when we update a dynamic array or mapping
         // Named events with the function name reversed
         emit RaffleEnter(msg.sender);
     }
 
+    /**
+     * @dev Function that chailink keeper nodes call, they look for the 'upkeepNeeded' to return true
+     * The following should be true in order to return true
+     * 1. Our time interval should have passed
+     * 2. Lottery should have at least 1 player, and have some ETH
+     * 3. Our subscription is funded with LINK
+     * 4. The lottery should in an "open" state
+     */
+    function checkUpKeep(
+        bytes calldata /*checkData*/
+    ) external override returns () {}
+
     // external are cheaper then public, since contract cant call this
     function requestRandomWinner() external {
         // Request random number
         // do something with it
         // 2 transaction process
-        //   i_vrfCoordinator.requestRandomWords(
-        //       keyHash, // gasLane
-        //       s_subscriptionId,
-        //       requestConfirmations,
-        //       callbackGasLimit,
-        //       numWords
-        //   );
+        s_raffleState = RaffleState.CALCULATING;
+
         uint256 requestId = i_vrfCoordinator.requestRandomWords(
             i_gasLane, // gasLane
             i_subscriptionId,
@@ -94,6 +115,12 @@ contract Raffle is VRFConsumerBaseV2 {
         uint256 indexOfWinner = randomWords[0] % s_players.length;
         address payable recentWinner = s_players[indexOfWinner];
         s_recentWinner = recentWinner;
+
+        // open raffle back up
+        s_raffleState = RaffleState.OPEN;
+
+        // reset players array
+        s_players = new address payable[](0);
 
         // send the money
         (bool success, ) = recentWinner.call{value: address(this).balance}(""); // all of the balance and no data
