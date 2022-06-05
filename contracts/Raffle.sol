@@ -57,7 +57,7 @@ contract Raffle is VRFConsumerBaseV2, KeeperCompatibleInterface {
 
     /* Functions */
     constructor(
-        address vrfCoordinatorV2,
+        address vrfCoordinatorV2, // contract, so we gonna need some mocks!
         uint256 entraceFee,
         bytes32 gasLane,
         uint64 subscriptionId,
@@ -114,6 +114,7 @@ contract Raffle is VRFConsumerBaseV2, KeeperCompatibleInterface {
         bool hasPlayers = (s_players.length > 0);
         bool hasBalance = address(this).balance > 0;
         upkeepNeeded = (isOpen && timePassed && hasPlayers && hasBalance);
+        return (upkeepNeeded, "0x0"); // can we comment this out?
     }
 
     // external are cheaper then public, since contract cant call this
