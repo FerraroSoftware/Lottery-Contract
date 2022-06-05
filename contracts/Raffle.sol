@@ -8,6 +8,7 @@
 pragma solidity ^0.8.7;
 
 import "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
+import "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
 
 error Raffle__NotEnoughETHEntered();
 
@@ -15,13 +16,31 @@ contract Raffle is VRFConsumerBaseV2 {
     /* State variables */
     uint256 private immutable i_entraceFee;
     address payable[] private s_players; // someone from this list will need to be paid
-    /* Events */
-    event RaffleEnter(address indexed player);
+    // Getting set one time, make it private immutable
+    VRFCoordinatorV2Interface private immutable i_vrfCoordinator;
+    bytes32 private immutable i_gasLane;
+    uint64 private immutable i_subscriptionId;
+    uint64 private immutable i_callbackGasLimit;
+    uint16 private constant REQUEST_CONFIRMATION = 3;
+    uint32 private constant NUM_WORDS = 1;
 
-    constructor(address vrfCoordinatorV2, uint256 entraceFee)
-        VRFConsumerBaseV2(vrfCoordinatorV2)
-    {
+    /* Events */
+    event RaffleEnter(address indexed player); 
+    event RequestedRaffleWinner(uint256 indexed requestId);
+
+    // Constrcutor
+    constructor(
+        address vrfCoordinatorV2,
+        uint256 entraceFee,
+        bytes32 gasLane,
+        uint64 subscriptionId.
+        uint32 callbackGasLimit
+    ) VRFConsumerBaseV2(vrfCoordinatorV2) {
         i_entraceFee = entraceFee;
+        i_vrfCoordinator = VRFCoordinatorV2Interface(vrfCoordinatorV2);
+        i_gasLane = gasLane;
+        i_subscriptionId = subscriptionId;
+        i_callbackGasLimit = callbackGasLimit;
     }
 
     function enterRaffle() public payable {
@@ -40,6 +59,21 @@ contract Raffle is VRFConsumerBaseV2 {
         // Request random number
         // do something with it
         // 2 transaction process
+        //   i_vrfCoordinator.requestRandomWords(
+        //       keyHash, // gasLane
+        //       s_subscriptionId,
+        //       requestConfirmations,
+        //       callbackGasLimit,
+        //       numWords
+        //   );
+        uint256 requestId = i_vrfCoordinator.requestRandomWords(
+            i_gasLane, // gasLane
+            i_subscriptionId,
+            REQUEST_CONFIRMATION,
+            i_callbackGasLimit,
+            NUM_WORDS
+        );
+        emit RequestedRaffleWinner(requestId);
     }
 
     // fills random numbers
