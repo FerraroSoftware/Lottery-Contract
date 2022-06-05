@@ -36,6 +36,8 @@ contract Raffle is VRFConsumerBaseV2, KeeperCompatibleInterface {
     // Loterry Variables
     address private s_recentWinner;
     RaffleState private s_raffleState;
+    uint256 private s_lastTimeStamp;
+    uint256 private immutable i_interval;
 
     /* Events */
     event RaffleEnter(address indexed player);
@@ -48,7 +50,8 @@ contract Raffle is VRFConsumerBaseV2, KeeperCompatibleInterface {
         uint256 entraceFee,
         bytes32 gasLane,
         uint64 subscriptionId,
-        uint32 callbackGasLimit
+        uint32 callbackGasLimit,
+        uint256 interval
     ) VRFConsumerBaseV2(vrfCoordinatorV2) {
         i_entraceFee = entraceFee;
         i_vrfCoordinator = VRFCoordinatorV2Interface(vrfCoordinatorV2);
@@ -56,6 +59,8 @@ contract Raffle is VRFConsumerBaseV2, KeeperCompatibleInterface {
         i_subscriptionId = subscriptionId;
         i_callbackGasLimit = callbackGasLimit;
         s_raffleState = RaffleState.OPEN;
+        s_lastTimeStamp = block.timestamp;
+        i_interval = interval;
     }
 
     function enterRaffle() public payable {
@@ -83,10 +88,28 @@ contract Raffle is VRFConsumerBaseV2, KeeperCompatibleInterface {
      */
     function checkUpKeep(
         bytes calldata /*checkData*/
-    ) external override returns () {}
+    )
+        external
+        override
+        returns (
+            bool upkeepNeeded,
+            bytes memory /* performData */
+        )
+    {
+        bool isOpen = (RaffleState.OPEN == s_raffleState);
+        // block.timestamp (current timestamp)
+        // block.timestamp - lastblock timestamp
+        bool timePassed = ((block.timestamp - s_lastTimeStamp) > i_interval);
+        bool hasPlayers = (s_players.length > 0);
+        bool hasBalance = address(this).balance > 0;
+        upkeepNeeded = (isOpen && timePassed && hasPlayers && hasBalance);
+    }
 
     // external are cheaper then public, since contract cant call this
-    function requestRandomWinner() external {
+    //  function requestRandomWinner() external {
+    function performUpKeep(
+        bytes calldata /* performData */
+    ) external override {
         // Request random number
         // do something with it
         // 2 transaction process
