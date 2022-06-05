@@ -7,16 +7,20 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.7;
 
+import "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
+
 error Raffle__NotEnoughETHEntered();
 
-contract Raffle {
+contract Raffle is VRFConsumerBaseV2 {
     /* State variables */
     uint256 private immutable i_entraceFee;
     address payable[] private s_players; // someone from this list will need to be paid
     /* Events */
     event RaffleEnter(address indexed player);
 
-    constructor(uint256 entraceFee) {
+    constructor(address vrfCoordinatorV2, uint256 entraceFee)
+        VRFConsumerBaseV2(vrfCoordinatorV2)
+    {
         i_entraceFee = entraceFee;
     }
 
@@ -31,8 +35,20 @@ contract Raffle {
         emit RaffleEnter(msg.sender);
     }
 
-    //  function pickRandomWinner() {}
+    // external are cheaper then public, since contract cant call this
+    function requestRandomWinner() external {
+        // Request random number
+        // do something with it
+        // 2 transaction process
+    }
 
+    // fills random numbers
+    function fulfillRandomWords(uint256 requestId, uint256[] memory randomWords)
+        internal
+        override
+    {}
+
+    /* View && Pure functions */
     function getEntranceFee() public view returns (uint256) {
         return i_entraceFee;
     }
